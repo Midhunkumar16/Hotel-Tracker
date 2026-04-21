@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 
 const POLL_INTERVAL = 30000;
-const BACKEND_URL = "http://localhost:8000";
+const BACKEND_URL = "https://hotel-tracker-hw3k.onrender.com";
 
 const RADIUS_OPTIONS = [
   { label: "5 km", value: 5000 },
