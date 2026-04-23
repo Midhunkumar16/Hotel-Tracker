@@ -268,7 +268,7 @@ function CompetitorRow({ hotel, myRates, expanded, onToggle }) {
                         {cmp.status === "same"
                           ? <span style={{ color: "#555", fontSize: 12 }}>—</span>
                           : <span style={{ fontSize: 13, fontWeight: 700, color: isWorse ? "#ff5050" : "#28c878" }}>
-                              {isWorse ? "▲" : "▼"} ${Math.abs(cmp.diff)} {isWorse ? "they're cheaper" : "you're cheaper"}
+                              {isWorse ? "▼" : "▲"} ${Math.abs(cmp.diff)} {isWorse ? "they're cheaper" : "you're pricier"}
                             </span>
                         }
                       </td>

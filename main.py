@@ -235,7 +235,7 @@ async def get_competitors(
                     "my_rate": my_rate,
                     "competitor_rate": comp_rate,
                     "diff": round(diff),
-                    "status": "cheaper" if diff > 0 else "expensive" if diff < 0 else "same"
+                    "status": "cheaper" if diff < 0 else "expensive" if diff > 0 else "same"
                 }
             comp["rate_comparison"] = comparison
 
