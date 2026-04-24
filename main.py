@@ -231,6 +231,8 @@ async def get_competitors(
                 my_rate = my_rates.get(room, 0)
                 comp_rate = comp["room_rates"].get(room, 0)
                 diff = comp_rate - my_rate
+                # diff > 0 means competitor is MORE expensive than us (good for us)
+                # diff < 0 means competitor is CHEAPER than us (bad for us = alert)
                 comparison[room] = {
                     "my_rate": my_rate,
                     "competitor_rate": comp_rate,
