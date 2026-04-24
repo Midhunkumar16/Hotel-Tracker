@@ -56,10 +56,9 @@ function HotelSetup({ onSave }) {
     setSaving(true);
     try {
       const payload = { ...form, lat: parseFloat(form.lat), lng: parseFloat(form.lng), star_rating: parseInt(form.star_rating), room_rates: Object.fromEntries(ROOM_TYPES.map(r => [r, parseFloat(form.room_rates[r])])) };
-      const res = await fetch(`${BACKEND_URL}/my-hotel`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-      if (!res.ok) throw new Error("Failed to save hotel");
-      const data = await res.json();
-      onSave(data.hotel);
+      localStorage.setItem("ht_my_hotel", JSON.stringify(payload));
+      try { await fetch(`${BACKEND_URL}/my-hotel`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }); } catch (_) {}
+      onSave(payload);
     } catch (e) { setError(e.message); }
     finally { setSaving(false); }
   };
@@ -324,10 +323,20 @@ export default function HotelTracker() {
   useEffect(() => { radiusRef.current = radius; }, [radius]);
 
   useEffect(() => {
-    fetch(`${BACKEND_URL}/my-hotel`)
-      .then(r => r.ok ? r.json() : null)
-      .then(data => { if (data) { setMyHotel(data); setSetupDone(true); } setCheckingSetup(false); })
-      .catch(() => setCheckingSetup(false));
+    // Load from localStorage first — instant, no backend needed
+    const saved = localStorage.getItem("ht_my_hotel");
+    if (saved) {
+      try {
+        const hotel = JSON.parse(saved);
+        setMyHotel(hotel);
+        setSetupDone(true);
+        setCheckingSetup(false);
+        // Sync to backend in background (it may have restarted)
+        fetch(`${BACKEND_URL}/my-hotel`, { method: "POST", headers: { "Content-Type": "application/json" }, body: saved }).catch(() => {});
+        return;
+      } catch (_) {}
+    }
+    setCheckingSetup(false);
   }, []);
 
   const fetchCompetitors = useCallback(async (radiusMeters) => {
@@ -346,11 +355,11 @@ export default function HotelTracker() {
   }, [myHotel]);
 
   const fetchPinned = useCallback(async () => {
-    try {
-      const res = await fetch(`${BACKEND_URL}/pinned-competitors`);
-      const data = await res.json();
-      setPinnedCompetitors(data.pinned || []);
-    } catch (e) {}
+    // Load from localStorage first
+    const saved = localStorage.getItem("ht_pinned");
+    if (saved) {
+      try { setPinnedCompetitors(JSON.parse(saved)); } catch (_) {}
+    }
   }, []);
 
   useEffect(() => {
@@ -379,14 +388,20 @@ export default function HotelTracker() {
   const handlePin = (hotel) => {
     setPinnedCompetitors(prev => {
       if (prev.find(p => p.id === hotel.id)) return prev;
-      return [...prev, hotel];
+      const updated = [...prev, hotel];
+      localStorage.setItem("ht_pinned", JSON.stringify(updated));
+      return updated;
     });
     setActiveTab("pinned");
   };
 
   const handleUnpin = async (placeId) => {
-    await fetch(`${BACKEND_URL}/pinned-competitors/${placeId}`, { method: "DELETE" });
-    setPinnedCompetitors(prev => prev.filter(p => p.id !== placeId));
+    setPinnedCompetitors(prev => {
+      const updated = prev.filter(p => p.id !== placeId);
+      localStorage.setItem("ht_pinned", JSON.stringify(updated));
+      return updated;
+    });
+    fetch(`${BACKEND_URL}/pinned-competitors/${placeId}`, { method: "DELETE" }).catch(() => {});
   };
 
   const pinnedIds = new Set(pinnedCompetitors.map(p => p.id));
@@ -452,7 +467,7 @@ export default function HotelTracker() {
               </div>
               Auto-refresh
             </button>
-            <button onClick={() => setSetupDone(false)} style={{ fontSize: 12, color: "#555", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Edit my hotel</button>
+            <button onClick={() => { localStorage.removeItem("ht_my_hotel"); setSetupDone(false); setMyHotel(null); }} style={{ fontSize: 12, color: "#555", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Edit my hotel</button>
           </div>
         </div>
 
