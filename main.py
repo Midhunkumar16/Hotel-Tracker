@@ -448,7 +448,7 @@ Keep responses short and friendly. Use 1-2 emojis max."""
                 "content-type": "application/json",
             },
             json={
-                "model": "claude-opus-4-5",
+                "model": "claude-haiku-4-5-20251001",
                 "max_tokens": 1000,
                 "system": system_prompt,
                 "messages": [m.dict() for m in req.messages],
