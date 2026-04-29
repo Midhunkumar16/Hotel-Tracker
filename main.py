@@ -323,3 +323,82 @@ async def get_nearby_hotels(
 @app.get("/health")
 async def health():
     return {"status": "ok", "api_key_set": bool(GOOGLE_API_KEY)}
+
+
+# ── TravelMate Endpoints ──────────────────────────────────────────────────────
+
+TRAVELMATE_SEARCH_URL = "https://maps.googleapis.com/maps/api/place/textsearch/json"
+TRAVELMATE_NEARBY_URL = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
+TRAVELMATE_DETAILS_URL = "https://maps.googleapis.com/maps/api/place/details/json"
+
+
+@app.get("/travelmate/hotel")
+async def find_hotel(q: str = Query(..., description="Hotel name and city")):
+    """Search for a hotel by name and return its location."""
+    if not GOOGLE_API_KEY:
+        raise HTTPException(status_code=500, detail="GOOGLE_API_KEY not set")
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.get(TRAVELMATE_SEARCH_URL, params={
+            "query": q,
+            "type": "lodging",
+            "key": GOOGLE_API_KEY,
+        })
+        results = resp.json().get("results", [])
+        if not results:
+            raise HTTPException(status_code=404, detail="Hotel not found")
+        h = results[0]
+        return {
+            "place_id": h.get("place_id"),
+            "name": h.get("name"),
+            "address": h.get("formatted_address", ""),
+            "lat": h["geometry"]["location"]["lat"],
+            "lng": h["geometry"]["location"]["lng"],
+            "rating": h.get("rating"),
+        }
+
+
+@app.get("/travelmate/places")
+async def get_places_near_hotel(
+    lat: float = Query(...),
+    lng: float = Query(...),
+    category: str = Query(..., description="e.g. restaurant, museum, bar, shopping_mall, park"),
+    radius: int = Query(1500),
+    keyword: str = Query(None, description="Optional keyword filter e.g. 'rooftop', 'vegan'"),
+):
+    """Fetch places of a given category near a hotel location."""
+    if not GOOGLE_API_KEY:
+        raise HTTPException(status_code=500, detail="GOOGLE_API_KEY not set")
+
+    params = {
+        "location": f"{lat},{lng}",
+        "radius": radius,
+        "type": category,
+        "key": GOOGLE_API_KEY,
+    }
+    if keyword:
+        params["keyword"] = keyword
+
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.get(TRAVELMATE_NEARBY_URL, params=params)
+        results = resp.json().get("results", [])[:8]
+
+    places = []
+    for p in results:
+        plat = p["geometry"]["location"]["lat"]
+        plng = p["geometry"]["location"]["lng"]
+        places.append({
+            "id": p.get("place_id"),
+            "name": p.get("name"),
+            "address": p.get("vicinity", ""),
+            "rating": p.get("rating"),
+            "user_ratings_total": p.get("user_ratings_total", 0),
+            "price_level": p.get("price_level"),
+            "open_now": p.get("opening_hours", {}).get("open_now"),
+            "distance_km": haversine(lat, lng, plat, plng),
+            "lat": plat,
+            "lng": plng,
+            "maps_url": f"https://www.google.com/maps/place/?q=place_id:{p.get('place_id')}",
+        })
+
+    places.sort(key=lambda x: x["distance_km"])
+    return {"places": places, "count": len(places)}
