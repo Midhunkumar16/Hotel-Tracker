@@ -404,9 +404,10 @@ async def get_places_near_hotel(
     return {"places": places, "count": len(places)}
 
 
-# ── TravelMate Chat Endpoint ──────────────────────────────────────────────────
+# ── TravelMate Chat Endpoint (Gemini) ────────────────────────────────────────
 
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+GEMINI_API_KEY = os.getenv("GOOGLE_API_KEY")  # Reuse existing Google API key
+GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
 
 class ChatMessage(BaseModel):
     role: str
@@ -419,9 +420,9 @@ class ChatRequest(BaseModel):
 
 @app.post("/travelmate/chat")
 async def travelmate_chat(req: ChatRequest):
-    """Proxy Claude API call through backend to keep API key secure."""
-    if not ANTHROPIC_API_KEY:
-        raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY not set")
+    """Proxy Gemini API call through backend to keep API key secure."""
+    if not GEMINI_API_KEY:
+        raise HTTPException(status_code=500, detail="GOOGLE_API_KEY not set")
 
     system_prompt = f"""You are TravelMate, a friendly AI travel guide helping a traveler explore around {req.hotel_name} located at {req.hotel_address}.
 
@@ -435,29 +436,30 @@ Category must be one of: restaurant, bar, cafe, museum, tourist_attraction, park
 
 keyword is optional — only include if the user asked for something specific like "vegan", "rooftop", "street food", "jazz" etc.
 
-If the traveler is asking something that doesn't need a place search (like general questions), skip the <search> block.
+If the traveler is asking something that does not need a place search (like general questions), skip the <search> block.
 
 Keep responses short and friendly. Use 1-2 emojis max."""
 
+    # Build Gemini conversation format
+    gemini_messages = []
+    for m in req.messages:
+        role = "user" if m.role == "user" else "model"
+        gemini_messages.append({"role": role, "parts": [{"text": m.content}]})
+
     async with httpx.AsyncClient(timeout=30) as client:
         resp = await client.post(
-            "https://api.anthropic.com/v1/messages",
-            headers={
-                "x-api-key": ANTHROPIC_API_KEY,
-                "anthropic-version": "2023-06-01",
-                "content-type": "application/json",
-            },
+            f"{GEMINI_URL}?key={GEMINI_API_KEY}",
+            headers={"Content-Type": "application/json"},
             json={
-                "model": "claude-haiku-4-5-20251001",
-                "max_tokens": 1000,
-                "system": system_prompt,
-                "messages": [m.dict() for m in req.messages],
+                "system_instruction": {"parts": [{"text": system_prompt}]},
+                "contents": gemini_messages,
+                "generationConfig": {"maxOutputTokens": 1000, "temperature": 0.7},
             }
         )
 
     if not resp.is_success:
-        raise HTTPException(status_code=502, detail="AI service error")
+        raise HTTPException(status_code=502, detail=f"Gemini error: {resp.text}")
 
     data = resp.json()
-    text = data.get("content", [{}])[0].get("text", "")
+    text = data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
     return {"response": text}
