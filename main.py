@@ -193,8 +193,8 @@ async def get_my_hotel():
 @app.get("/search")
 async def search_hotels(q: str = Query(..., description="Hotel name or location")):
     """Search for any hotel globally using Google Places Text Search."""
-    if not GOOGLE_API_KEY:
-        raise HTTPException(status_code=500, detail="GOOGLE_API_KEY not set")
+    if not GEMINI_API_KEY:
+        raise HTTPException(status_code=500, detail="GEMINI_API_KEY not set")
     my_hotel = MY_HOTEL_STORE.get("hotel")
     ref_lat  = my_hotel["lat"]  if my_hotel else 0
     ref_lng  = my_hotel["lng"]  if my_hotel else 0
@@ -219,8 +219,8 @@ async def search_hotels(q: str = Query(..., description="Hotel name or location"
 @app.post("/pinned-competitors")
 async def pin_competitor(req: PinRequest):
     """Pin a hotel as a manually added competitor."""
-    if not GOOGLE_API_KEY:
-        raise HTTPException(status_code=500, detail="GOOGLE_API_KEY not set")
+    if not GEMINI_API_KEY:
+        raise HTTPException(status_code=500, detail="GEMINI_API_KEY not set")
     my_hotel = MY_HOTEL_STORE.get("hotel")
     ref_lat  = my_hotel["lat"] if my_hotel else 0
     ref_lng  = my_hotel["lng"] if my_hotel else 0
@@ -276,8 +276,8 @@ async def get_competitors(
     lng: float = Query(...),
     radius: int = Query(5000),
 ):
-    if not GOOGLE_API_KEY:
-        raise HTTPException(status_code=500, detail="GOOGLE_API_KEY not set")
+    if not GEMINI_API_KEY:
+        raise HTTPException(status_code=500, detail="GEMINI_API_KEY not set")
     my_hotel = MY_HOTEL_STORE.get("hotel")
 
     async with httpx.AsyncClient(timeout=30) as client:
@@ -303,8 +303,8 @@ async def get_nearby_hotels(
     lng: float = Query(...),
     radius: int = Query(5000),
 ):
-    if not GOOGLE_API_KEY:
-        raise HTTPException(status_code=500, detail="GOOGLE_API_KEY not set")
+    if not GEMINI_API_KEY:
+        raise HTTPException(status_code=500, detail="GEMINI_API_KEY not set")
     async with httpx.AsyncClient(timeout=30) as client:
         all_results = await fetch_all_nearby(client, lat, lng, radius)
         filtered    = [p for p in all_results if is_real_hotel(p)]
@@ -335,8 +335,8 @@ TRAVELMATE_DETAILS_URL = "https://maps.googleapis.com/maps/api/place/details/jso
 @app.get("/travelmate/hotel")
 async def find_hotel(q: str = Query(..., description="Hotel name and city")):
     """Search for a hotel by name and return its location."""
-    if not GOOGLE_API_KEY:
-        raise HTTPException(status_code=500, detail="GOOGLE_API_KEY not set")
+    if not GEMINI_API_KEY:
+        raise HTTPException(status_code=500, detail="GEMINI_API_KEY not set")
     async with httpx.AsyncClient(timeout=15) as client:
         resp = await client.get(TRAVELMATE_SEARCH_URL, params={
             "query": q,
@@ -366,8 +366,8 @@ async def get_places_near_hotel(
     keyword: str = Query(None, description="Optional keyword filter e.g. 'rooftop', 'vegan'"),
 ):
     """Fetch places of a given category near a hotel location."""
-    if not GOOGLE_API_KEY:
-        raise HTTPException(status_code=500, detail="GOOGLE_API_KEY not set")
+    if not GEMINI_API_KEY:
+        raise HTTPException(status_code=500, detail="GEMINI_API_KEY not set")
 
     params = {
         "location": f"{lat},{lng}",
