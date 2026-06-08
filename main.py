@@ -406,7 +406,7 @@ async def get_places_near_hotel(
 
 # ── TravelMate Chat Endpoint (Gemini) ────────────────────────────────────────
 
-GEMINI_API_KEY = os.getenv("GOOGLE_API_KEY")  # Reuse existing Google API key
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
 
 class ChatMessage(BaseModel):
